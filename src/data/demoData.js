@@ -9,7 +9,7 @@ export const seedEquipment = [
   ['EQ-1002','Telehandler','JCB 525-60','Lifts',285,'Available',98,'https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=700&q=85'],
 ];
 
-export const dateOffset = offset => { const date=new Date(); date.setDate(date.getDate()+offset); return date.toISOString().slice(0,10); };
+export const dateOffset = offset => { const date=new Date(); date.setDate(date.getDate()+offset); return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; };
 
 export const seedBookings = [
   {id:'BK-2408',customer:'Northstar Construction',contact:'Olivia Rhye',equipment:'Mini excavator',code:'EQ-1038',start:dateOffset(-1),end:dateOffset(3),amount:1200,status:'Active'},
