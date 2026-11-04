@@ -122,7 +122,7 @@ The sample organization name (**Atlas Equipment**) is editable in **Settings →
 
 ## License
 
-No license is currently specified. Add a license before accepting external contributions or distributing the project for reuse.
+This project is licensed under the [MIT License](LICENSE). Copyright © 2026 Jahid Khan Tuhin.
 
 ---
 
