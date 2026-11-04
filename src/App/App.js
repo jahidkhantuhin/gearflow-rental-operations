@@ -1,69 +1,53 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useMemo, useState } from 'react';
 import './App.css';
-import SideMenu from "../components/SideMenu";
-import { makeStyles, CssBaseline, createMuiTheme, ThemeProvider } from '@material-ui/core';
-import Header from "../components/Header";
-import PageHeader from '../components/PageHeader';
-import * as productData from "../data/productData";
+import { dateOffset, seedBookings, seedCustomers, seedEquipment } from '../data/demoData';
+import { readWorkspaceValue, writeWorkspaceValue } from '../data/storage';
 
-import ProductManagement from "../pages/ProductManagement/ProductManagement";
-
-const theme = createMuiTheme({
-  palette: {
-    primary: {
-      main: "#333996",
-      light: '#3c44b126'
-    },
-    secondary: {
-      main: "#f83245",
-      light: '#f8324526'
-    },
-    background: {
-      default: "#f4f5fd"
-    },
-  },
-  overrides:{
-    MuiAppBar:{
-      root:{
-        transform:'translateZ(0)'
-      }
-    }
-  },
-  props:{
-    MuiIconButton:{
-      disableRipple:true
-    }
-  }
-})
-
-
-const useStyles = makeStyles({
-  appMain: {
-    paddingLeft: '320px',
-    width: '100%'
-  }
-})
+const money = n => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n);
+const downloadCsv = (filename, rows) => {
+  if (!rows.length) return;
+  const columns = Object.keys(rows[0]);
+  const csv = [columns.join(','), ...rows.map(row => columns.map(key => `"${String(row[key] ?? '').replace(/"/g, '""')}"`).join(','))].join('\r\n');
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
+const Icon = ({name}) => { const paths={grid:'▦',box:'▣',calendar:'▤',users:'♙',tool:'⚒',chart:'↗',settings:'⚙',search:'⌕',bell:'♧',plus:'＋',arrow:'↗',more:'•••',filter:'☷',download:'↓',check:'✓',clock:'◷',close:'×',spark:'✳'}; return <span className="icon" aria-hidden="true">{paths[name]||'•'}</span>; };
 
 function App() {
-
-  useEffect(() => {
-    productData.insertProductData()
-    productData.getAllNewBookedProduct()
-  });
-
-  const classes = useStyles();
-
-  return (
-    <ThemeProvider theme={theme}>
-      <SideMenu />
-      <div className={classes.appMain}>
-        <Header />
-        
-        <ProductManagement />
-      </div>
-      <CssBaseline />
-    </ThemeProvider>
-  );
+  const [equipment,setEquipment]=useState(()=>readWorkspaceValue('equipment',seedEquipment.map(([code,name,model,category,rate,status,health,image])=>({code,name,model,category,rate,status,health,image}))));
+  const [bookings,setBookings]=useState(()=>readWorkspaceValue('bookings',seedBookings));
+  const [customers,setCustomers]=useState(()=>readWorkspaceValue('customers',seedCustomers));
+  const [workspace,setWorkspace]=useState(()=>readWorkspaceValue('workspace','Atlas Equipment'));
+  const [page,setPage]=useState('Overview'); const [query,setQuery]=useState(''); const [category,setCategory]=useState('All equipment'); const [modal,setModal]=useState(''); const [toast,setToast]=useState('');
+  useEffect(()=>{writeWorkspaceValue('equipment',equipment);},[equipment]);
+  useEffect(()=>{writeWorkspaceValue('bookings',bookings);},[bookings]);
+  useEffect(()=>{writeWorkspaceValue('customers',customers);},[customers]);
+  useEffect(()=>{writeWorkspaceValue('workspace',workspace);},[workspace]);
+  const notify=message=>{setToast(message);window.setTimeout(()=>setToast(''),2600);};
+  useEffect(()=>{const handleToast=event=>{setToast(event.detail);window.setTimeout(()=>setToast(''),2600);};window.addEventListener('gearflow-toast',handleToast);return()=>window.removeEventListener('gearflow-toast',handleToast);},[]);
+  const available=equipment.filter(item=>item.status==='Available').length;
+  const filtered=useMemo(()=>equipment.filter(item=>(category==='All equipment'||item.category===category)&&`${item.name} ${item.model} ${item.code}`.toLowerCase().includes(query.toLowerCase())),[equipment,category,query]);
+  const nav=[['Workspace',[['Overview','grid'],['Equipment','box'],['Bookings','calendar'],['Customers','users']]],['Manage',[['Maintenance','tool'],['Reports','chart'],['Settings','settings']]]];
+  const addBooking=form=>{const item=equipment.find(x=>x.code===form.code);if(!item||item.status!=='Available'){notify('That equipment is no longer available.');return;}if(new Date(form.end)<=new Date(form.start)){notify('Return date must be after pickup date.');return;}const id=`BK-${Math.floor(2409+Math.random()*900)}`;const days=Math.max(1,Math.ceil((new Date(form.end)-new Date(form.start))/86400000));const customer=customers.find(x=>x.name===form.customer);const booking={id,customer:form.customer,contact:customer?.person||'New contact',equipment:item.name,code:item.code,start:form.start,end:form.end,amount:item.rate*days,status:'Confirmed'};setBookings([booking,...bookings]);setEquipment(equipment.map(x=>x.code===item.code?{...x,status:'Rented'}:x));setModal('');notify(`Booking ${id} created`);};
+  const resetDemo=()=>{setEquipment(seedEquipment.map(([code,name,model,category,rate,status,health,image])=>({code,name,model,category,rate,status,health,image})));setBookings(seedBookings);setCustomers(seedCustomers);setWorkspace('Atlas Equipment');notify('Demo workspace restored');};
+  return <div className="app-shell"><aside className="sidebar"><a className="brand" href="#overview" onClick={()=>setPage('Overview')}><span className="brand-mark"><Icon name="spark"/></span><span>gearflow<span className="brand-dot">.</span><small>RENTAL OPERATIONS</small></span></a><div className="workspace-switch"><span className="workspace-avatar">{workspace[0]}</span><span><b>{workspace}</b><small>Pro workspace</small></span><span className="switch-caret">⌄</span></div>{nav.map(group=><div className="nav-group" key={group[0]}><p>{group[0]}</p>{group[1].map(([label,icon])=><button key={label} className={`nav-item ${page===label?'active':''}`} onClick={()=>setPage(label)}><Icon name={icon}/>{label}{label==='Bookings'&&<span className="nav-count">{bookings.length}</span>}</button>)}</div>)}<div className="sidebar-bottom"><div className="help-card"><div className="help-icon">✦</div><b>Need a hand?</b><p>Visit the help center for tips and guides.</p><button onClick={()=>notify('Help center is ready for your team')}>Open help center <span>↗</span></button></div><button className="profile"><span className="avatar">JK</span><span><b>Jahid Khan</b><small>Workspace admin</small></span><Icon name="more"/></button></div></aside>
+  <main className="main-area"><header className="topbar"><div className="breadcrumb">Workspace <span>/</span> <b>{page}</b></div><div className="top-actions"><label className="global-search"><Icon name="search"/><input placeholder="Search anything..." value={query} onChange={e=>setQuery(e.target.value)}/><kbd>⌘ K</kbd></label><button className="icon-button" onClick={()=>notify('You’re all caught up')} aria-label="Notifications"><Icon name="bell"/><i/></button><span className="top-avatar">JK</span></div></header>
+  <div className="content"><div className="page-heading"><div><div className="eyebrow">{new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}).toUpperCase()} <span className="live-pill"><i/> LIVE OVERVIEW</span></div><h1>{page==='Overview'?'Good morning, Jahid':page}</h1><p>{page==='Overview'?'Here’s what’s happening with your rental business today.':page==='Equipment'?'Manage availability, condition, and utilization across your fleet.':page==='Bookings'?'Track reservations and keep every job moving.':page==='Customers'?'Build lasting relationships with the teams that build your city.':page==='Maintenance'?'Keep your fleet safe, reliable, and ready to work.':page==='Reports'?'A clearer view of utilization, revenue, and fleet health.':'Make Gearflow work for your team.'}</p></div><div className="heading-actions"><button className="button button-secondary" onClick={()=>downloadCsv('gearflow-equipment.csv',equipment.map(({code,name,model,category,rate,status,health})=>({code,name,model,category,dayRate:rate,status,health})))}><Icon name="download"/> Export</button><button className="button button-primary" onClick={()=>setModal('booking')}><Icon name="plus"/> New booking</button></div></div>
+  {page==='Overview'&&<><div className="metrics"><Metric label="Fleet utilization" value="78.4%" delta="↑ 12.8%" note="vs. last month" icon="chart" tone="violet" progress={78}/><Metric label="Active bookings" value={String(bookings.filter(x=>x.status==='Active'||x.status==='Confirmed').length)} delta="↑ 8.2%" note="vs. last month" icon="calendar" tone="blue"/><Metric label="Revenue this month" value="$48,290" delta="↑ 18.6%" note="vs. last month" icon="chart" tone="green"/><Metric label="Available equipment" value={String(available)} delta="Fleet ready" note={`${available} in your demo fleet`} icon="box" tone="amber"/></div><div className="overview-grid"><section className="panel revenue-panel"><div className="panel-header"><div><h2>Revenue overview</h2><p>Keep an eye on how your business is performing.</p></div><select defaultValue="Last 7 days" aria-label="Revenue time range"><option>Last 7 days</option><option>Last 30 days</option><option>This year</option></select></div><div className="chart-summary"><strong>$48,290</strong><span className="trend">↗ 18.6%</span><small>vs. $40,684 last month</small></div><div className="chart"><div className="chart-y"><span>$15k</span><span>$10k</span><span>$5k</span><span>$0</span></div><div className="chart-plot"><div className="grid-lines"><i/><i/><i/><i/></div><div className="bars">{[38,52,44,69,56,75,62,48,81,67,91,73,84,60,94,74,88,68,100,83,75,95,72,89,63,98,78,86].map((v,i)=><div className="bar-wrap" key={i}><i style={{height:`${v}%`}}/></div>)}</div><div className="chart-x"><span>Jun 1</span><span>Jun 5</span><span>Jun 9</span><span>Jun 13</span><span>Jun 17</span></div></div></div><div className="panel-header chart-legend"><span><i className="legend-dot"/> Rental revenue</span><span>Updated just now</span></div></section><section className="panel bookings-panel"><div className="panel-header"><div><h2>Upcoming bookings</h2><p>Your next rentals at a glance.</p></div><button className="text-button" onClick={()=>setPage('Bookings')}>View all <Icon name="arrow"/></button></div><BookingList bookings={bookings.slice(0,4)}/></section></div><div className="panel fleet-panel"><div className="panel-header"><div><h2>Fleet at a glance</h2><p>A live look at your equipment.</p></div><button className="text-button" onClick={()=>setPage('Equipment')}>View equipment <Icon name="arrow"/></button></div><EquipmentTable items={equipment.slice(0,4)}/></div></>}
+  {page==='Equipment'&&<section className="panel fleet-panel full-panel"><div className="toolbar"><div className="tabs"><button className={category==='All equipment'?'selected':''} onClick={()=>setCategory('All equipment')}>All equipment <span>{equipment.length}</span></button>{['Lifts','Earthmoving','Compaction','Site utilities','Concrete'].map(x=><button className={category===x?'selected':''} key={x} onClick={()=>setCategory(x)}>{x}</button>)}</div><button className="button button-primary" onClick={()=>setModal('equipment')}><Icon name="plus"/> Add equipment</button></div><EquipmentTable items={filtered} onStatus={item=>{setEquipment(equipment.map(x=>x.code===item.code?{...x,status:x.status==='Available'?'Maintenance':'Available'}:x));notify('Equipment status updated');}}/></section>}
+  {page==='Bookings'&&<section className="panel full-panel"><div className="panel-header"><div><h2>All bookings</h2><p>{bookings.length} reservations in your workspace</p></div><button className="button button-primary" onClick={()=>setModal('booking')}><Icon name="plus"/> New booking</button></div><BookingList bookings={bookings} detailed/></section>}
+  {page==='Customers'&&<section className="panel full-panel"><div className="panel-header"><div><h2>Customer directory</h2><p>{customers.length} customer relationships</p></div><button className="button button-primary" onClick={()=>setModal('customer')}><Icon name="plus"/> Add customer</button></div><div className="table-scroll"><table><thead><tr><th>Customer</th><th>Contact</th><th>Bookings</th><th>Lifetime value</th><th>Status</th><th/></tr></thead><tbody>{customers.map(c=><tr key={c.name}><td><div className="customer-cell"><span className="customer-avatar">{c.name.split(' ').map(w=>w[0]).slice(0,2).join('')}</span><b>{c.name}</b></div></td><td>{c.person}<small className="sub-cell">{c.email}</small></td><td>{c.bookings} rentals</td><td><b>{money(c.spent)}</b></td><td><Status status={c.status}/></td><td><button className="row-more" onClick={()=>notify(`Contact ${c.person} at ${c.email}`)}>•••</button></td></tr>)}</tbody></table></div></section>}
+  {page==='Maintenance'&&<section className="maintenance-grid"><div className="panel maintenance-feature"><div className="maintenance-symbol">⚒</div><span className="status status-maintenance">2 NEED ATTENTION</span><h2>Keep your fleet<br/>job-site ready.</h2><p>Planned maintenance prevents downtime and protects your team. Review the equipment that needs a little attention.</p><button className="button button-primary" onClick={()=>notify('Maintenance checklist opened')}>Open maintenance board <Icon name="arrow"/></button></div><div className="panel maintenance-list"><div className="panel-header"><div><h2>Service queue</h2><p>Equipment flagged for service</p></div></div>{equipment.filter(x=>x.status==='Maintenance').concat([{code:'EQ-0996',name:'Hydraulic breaker',model:'Atlas Copco HB 2000',category:'Attachments',rate:120,status:'Maintenance',health:38,image:''}]).map(item=><div className="service-row" key={item.code}><span className="service-icon">⚙</span><div><b>{item.name}</b><small>{item.code} · {item.model}</small></div><span className="status status-maintenance">Service due</span><button className="button button-secondary button-small" onClick={()=>{setEquipment(equipment.map(x=>x.code===item.code?{...x,status:'Available',health:88}:x));notify('Equipment marked service complete');}}>Mark fixed</button></div>)}</div></section>}
+  {page==='Reports'&&<section className="panel full-panel reports"><div className="panel-header"><div><h2>Business snapshot</h2><p>Performance indicators for the last 30 days.</p></div><button className="button button-secondary" onClick={()=>downloadCsv('gearflow-bookings.csv',bookings.map(({id,customer,equipment,code,start,end,amount,status})=>({id,customer,equipment,code,start,end,amount,status})))}><Icon name="download"/> Export CSV</button></div><div className="report-cards"><Metric label="Gross rental revenue" value="$48,290" delta="↑ 18.6%" note="month over month" icon="chart" tone="green"/><Metric label="Rental days" value="342" delta="↑ 9.4%" note="month over month" icon="clock" tone="blue"/><Metric label="On-time returns" value="96.2%" delta="↑ 2.1%" note="month over month" icon="check" tone="violet"/></div><h3>Top performing equipment</h3><EquipmentTable items={[...equipment].sort((a,b)=>b.rate-a.rate).slice(0,5)}/></section>}
+  {page==='Settings'&&<section className="panel full-panel settings"><div className="panel-header"><div><h2>Workspace settings</h2><p>Customize your rental operations workspace.</p></div></div><div className="settings-row"><span className="settings-symbol" role="img" aria-label="Workspace">🏢</span><div><b>Workspace profile</b><p>Organization name and default currency.</p></div><button className="button button-secondary" onClick={()=>setModal('workspace')}>Edit profile</button></div><div className="settings-row"><span className="settings-symbol">✉</span><div><b>Booking notifications</b><p>Receive email updates for new and changed bookings.</p></div><label className="toggle"><input type="checkbox" defaultChecked/><i/></label></div><div className="settings-row"><span className="settings-symbol">◉</span><div><b>Demo workspace data</b><p>Restore the original sample fleet, bookings, and customers.</p></div><button className="button button-secondary" onClick={resetDemo}>Reset demo data</button></div><div className="settings-row"><span className="settings-symbol" role="img" aria-label="Privacy">🔒</span><div><b>Local-first demo</b><p>Demo changes stay in this browser using local storage.</p></div><span className="status status-available">Enabled</span></div></section>}
+  <footer className="footer"><span>© 2025 Gearflow, Inc.</span><span>Made for the people who keep projects moving <b>✳</b></span><span>Privacy&nbsp;&nbsp; · &nbsp;&nbsp;Terms</span></footer></div></main>{toast&&<div className="toast"><span>✓</span>{toast}</div>}{modal&&<Modal type={modal} workspace={workspace} equipment={equipment} customers={customers} onClose={()=>setModal('')} onBooking={addBooking} onAddEquipment={item=>{setEquipment([{...item,health:100,status:'Available',image:''},...equipment]);setModal('');notify('Equipment added to your fleet');}} onAddCustomer={c=>{setCustomers([{...c,bookings:0,spent:0,status:'Active'},...customers]);setModal('');notify('Customer added');}} onWorkspace={name=>{setModal('');setWorkspace(name);notify('Workspace name saved');}}/>}</div>;
 }
-
+function Metric({label,value,delta,note,icon,tone,progress}){return <div className="metric-card"><div className="metric-top"><span>{label}</span><span className={`metric-icon ${tone}`}><Icon name={icon}/></span></div><div className="metric-value">{value}</div><div className="metric-bottom"><span className="trend">{delta}</span><span>{note}</span></div>{progress&&<div className="progress"><i style={{width:`${progress}%`}}/></div>}</div>;}
+function Status({status}){return <span className={`status status-${status.toLowerCase()}`}><i/>{status}</span>;}
+function EquipmentTable({items,onStatus}){return <div className="table-scroll"><table><thead><tr><th>Equipment</th><th>Category</th><th>Day rate</th><th>Condition</th><th>Status</th><th/></tr></thead><tbody>{items.map(item=><tr key={item.code}><td><div className="equipment-cell"><img src={item.image||'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=150&q=80'} alt=""/><span><b>{item.name}</b><small>{item.code} · {item.model}</small></span></div></td><td>{item.category}</td><td><b>{money(item.rate)}</b> <span className="muted">/ day</span></td><td><div className="health-cell"><span className={`health-dot ${item.health<40?'low':''}`}/>{item.health}%</div></td><td><Status status={item.status}/></td><td><button className="row-more" onClick={()=>onStatus?onStatus(item):window.dispatchEvent(new CustomEvent('gearflow-toast',{detail:`${item.name} · ${item.code}`}))}>•••</button></td></tr>)}</tbody></table>{items.length===0&&<div className="empty-state">No equipment matches your search.</div>}</div>;}
+function BookingList({bookings,detailed}){return <div className={detailed?'table-scroll':''}>{detailed?<table><thead><tr><th>Booking</th><th>Customer</th><th>Equipment</th><th>Rental period</th><th>Amount</th><th>Status</th></tr></thead><tbody>{bookings.map(b=><tr key={b.id}><td><b>{b.id}</b></td><td>{b.customer}<small className="sub-cell">{b.contact}</small></td><td>{b.equipment}<small className="sub-cell">{b.code}</small></td><td>{b.start} → {b.end}</td><td><b>{money(b.amount)}</b></td><td><Status status={b.status}/></td></tr>)}</tbody></table>:<div className="booking-list">{bookings.map(b=><div className="booking-row" key={b.id}><div className="booking-date"><b>{new Date(`${b.start}T12:00:00`).getDate()}</b><small>{new Date(`${b.start}T12:00:00`).toLocaleString('en-US',{month:'short'}).toUpperCase()}</small></div><div className="booking-info"><b>{b.customer}</b><small>{b.equipment} · {b.id}</small></div><div className="booking-amount"><b>{money(b.amount)}</b><small>{b.status}</small></div></div>)}</div>}</div>;}
+function Modal({type,workspace,equipment,customers,onClose,onBooking,onAddEquipment,onAddCustomer,onWorkspace}){const [form,setForm]=useState({start:dateOffset(3),end:dateOffset(5),code:equipment.find(x=>x.status==='Available')?.code||'',customer:customers[0]?.name||''});const change=e=>setForm({...form,[e.target.name]:e.target.value});const titles={booking:'Create a booking',equipment:'Add equipment',customer:'Add a customer',workspace:'Edit workspace profile'};const submit=e=>{e.preventDefault();if(type==='booking')onBooking(form);if(type==='equipment')onAddEquipment({code:`EQ-${Math.floor(1050+Math.random()*899)}`,name:form.name,model:form.model,category:form.category,rate:Number(form.rate)});if(type==='customer')onAddCustomer({name:form.name,person:form.person,email:form.email,phone:form.phone});if(type==='workspace')onWorkspace(form.name);};return <div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><form className="modal" onSubmit={submit}><div className="modal-header"><div><span className="eyebrow">GEARFLOW WORKSPACE</span><h2>{titles[type]}</h2></div><button type="button" className="close-button" onClick={onClose} aria-label="Close">×</button></div><div className="modal-body">{type==='booking'&&<><label>Customer<select name="customer" value={form.customer} onChange={change}>{customers.map(c=><option key={c.name}>{c.name}</option>)}</select></label><label>Equipment<select name="code" value={form.code} onChange={change}>{equipment.filter(x=>x.status==='Available').map(x=><option value={x.code} key={x.code}>{x.name} · {x.code} · {money(x.rate)}/day</option>)}</select></label><div className="form-row"><label>Pickup date<input type="date" name="start" value={form.start} onChange={change} required/></label><label>Return date<input type="date" name="end" value={form.end} onChange={change} required/></label></div></>}{type==='equipment'&&<><label>Equipment name<input name="name" placeholder="e.g. Compact track loader" required/></label><label>Model<input name="model" placeholder="Manufacturer and model" required/></label><div className="form-row"><label>Category<select name="category"><option>Lifts</option><option>Earthmoving</option><option>Compaction</option><option>Site utilities</option><option>Concrete</option></select></label><label>Day rate ($)<input name="rate" type="number" min="1" placeholder="150" required/></label></div></>}{type==='customer'&&<><label>Company name<input name="name" placeholder="Company name" required/></label><label>Contact person<input name="person" placeholder="Full name" required/></label><div className="form-row"><label>Email<input name="email" type="email" placeholder="name@company.com" required/></label><label>Phone<input name="phone" placeholder="(555) 555-0100"/></label></div></>}{type==='workspace'&&<label>Workspace name<input name="name" defaultValue={workspace} required/></label>}</div><div className="modal-footer"><button className="button button-secondary" type="button" onClick={onClose}>Cancel</button><button className="button button-primary" type="submit">{type==='booking'?'Create booking':type==='equipment'?'Add to fleet':type==='customer'?'Add customer':'Save changes'}</button></div></form></div>;}
 export default App;

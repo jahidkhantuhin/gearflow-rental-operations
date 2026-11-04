@@ -1,6 +1,6 @@
 {
-  "name": "product-management",
-  "version": "0.1.0",
+  "name": "gearflow-rental-operations",
+  "version": "1.0.0",
   "private": true,
   "dependencies": {
     "react": "^16.13.1",
@@ -16,8 +16,8 @@
     "date-fns": "^2.14.0"
   },
   "scripts": {
-    "start": "set PORT=3000 && react-scripts start",
-    "build": "react-scripts build",
+    "start": "node scripts/react-scripts.js start",
+    "build": "node scripts/react-scripts.js build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
