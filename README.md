@@ -7,7 +7,7 @@
 
 Fleet · Bookings · Customers · Maintenance · Reporting
 
-[Explore the experience](#-product-tour) · [Run locally](#-get-started) · [Architecture](#-architecture) · [Roadmap](#-roadmap)
+[Explore the experience](#product-tour) · [Run locally](#get-started) · [Architecture](#architecture) · [Roadmap](#roadmap)
 
 </div>
 
@@ -21,9 +21,14 @@ This repository is a **portfolio-ready product prototype** built to demonstrate 
 
 ## Product tour
 
+![Gearflow product tour showing the overview, availability calendar, equipment, bookings, customers, maintenance, reports, and settings](docs/media/gearflow-overview.gif)
+
+[Browse the full-page screenshots](docs/media/screenshots), including the booking, equipment, customer, and workspace forms.
+
 | Workspace | What it helps a team do |
 | --- | --- |
 | **Overview** | Scan utilization, revenue, fleet availability, and upcoming rentals from one operational dashboard. |
+| **Availability calendar** | See reservations and availability across the fleet on one schedule. |
 | **Equipment** | Search and filter a sample fleet, inspect equipment health, change service availability, and add assets. |
 | **Bookings** | Review reservations and create a booking with customer, equipment, rental dates, and calculated pricing. |
 | **Customers** | Browse customer contacts and relationship history; add a customer to the directory. |
