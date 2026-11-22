@@ -1,134 +1,126 @@
-<div align="center">
-
 # Gearflow
-### Rental operations, in flow.
 
-**A polished, interactive operations workspace for equipment rental teams.**
-
-Fleet · Bookings · Customers · Maintenance · Reporting
-
-[Explore the experience](#product-tour) · [Run locally](#get-started) · [Architecture](#architecture) · [Roadmap](#roadmap)
-
-</div>
-
----
-
-## The idea
-
-Rental teams coordinate valuable equipment, busy job sites, changing schedules, and customer expectations across disconnected tools. Gearflow brings the day-to-day operation into one clear workspace: see what is ready, reserve it, keep customers moving, and catch maintenance before it becomes downtime.
-
-This repository is a **portfolio-ready product prototype** built to demonstrate product thinking, front-end architecture, thoughtful interaction design, and a credible path from demo to production. It ships with a realistic sample business so the experience is useful immediately, without setting up a database or external account.
+Gearflow helps equipment rental teams check fleet availability, create bookings, and manage service from one workspace. The demo starts with sample records and runs in your browser.
 
 ## Product tour
 
 ![Gearflow product tour showing the overview, availability calendar, equipment, bookings, customers, maintenance, reports, and settings](docs/media/gearflow-overview.gif)
 
-[Browse the full-page screenshots](docs/media/screenshots), including the booking, equipment, customer, and workspace forms.
+Follow the availability calendar into the fleet and bookings views. [Browse all 12 full-page screenshots](docs/media/screenshots), including the booking, equipment, customer, and workspace forms.
 
-| Workspace | What it helps a team do |
+## Key features
+
+- See upcoming pickups and current reservations on the fleet availability calendar.
+- Search and filter equipment, check its condition, and change service availability.
+- Create a booking with a customer, asset, and rental dates. The app calculates the total and marks the asset as rented.
+- Browse and add customers, and return inventory-backed assets to availability from the service queue.
+- Review a demo business snapshot, see equipment ranked by day rate, and export fleet or booking records as CSV.
+
+<details>
+<summary>Workspace reference</summary>
+
+| Workspace | What to look for |
 | --- | --- |
-| **Overview** | Scan utilization, revenue, fleet availability, and upcoming rentals from one operational dashboard. |
-| **Availability calendar** | See reservations and availability across the fleet on one schedule. |
-| **Equipment** | Search and filter a sample fleet, inspect equipment health, change service availability, and add assets. |
-| **Bookings** | Review reservations and create a booking with customer, equipment, rental dates, and calculated pricing. |
-| **Customers** | Browse customer contacts and relationship history; add a customer to the directory. |
-| **Maintenance** | See the service queue and return repaired equipment to the available fleet. |
-| **Reports** | Review revenue, rental days, on-time returns, and top-rated equipment. |
-| **Settings** | Configure the workspace name, manage the demo notification preference, and restore sample data. |
+| Overview | Fleet counts, upcoming bookings, and an illustrative revenue chart |
+| Availability calendar | Reservations and availability by asset |
+| Equipment | Search, category filters, condition, and service availability |
+| Bookings | Reservation list and booking form |
+| Customers | Contact records and sample rental history |
+| Maintenance | Service queue and completion for inventory-backed assets |
+| Reports | Illustrative KPIs, equipment ranked by day rate, and booking CSV export |
+| Settings | Workspace name, a demo notification toggle, and sample data reset |
 
-Every view is reachable from the sidebar. Forms validate required fields, updates flow between views, and the demo saves equipment, bookings, customers, and workspace configuration in browser local storage.
+</details>
 
-## Design principles
+## Tech stack
 
-- **Operational clarity:** status, rate, health, and next action are visible where teams need them.
-- **Fast by default:** searchable fleet, quick navigation, and focused forms keep common work short.
-- **Responsive by design:** the layout adapts from a wide operations desk to compact mobile screens.
-- **A believable first run:** sample equipment, bookings, and customer records make the product presentation-ready.
-- **No demo account required:** changes are local to the browser and can be reset from Settings.
+| Area | Technologies |
+| --- | --- |
+| Active workspace | React 16, JavaScript, CSS |
+| Persistence | Browser local storage with a namespaced adapter |
+| Build and hosting | Create React App 3, Webpack 4, static hosting |
+| Tests | Jest via React Scripts, React Testing Library |
 
-## Get started
+Material UI 4 remains a dependency of the retained legacy product management components.
 
-### Requirements
+## Architecture
 
-- Node.js 18 or later
-- npm 9 or later
+The workspace shell in [App.js](src/App/App.js) manages the active view, records, and booking workflow. It initializes each record collection through the [storage adapter](src/data/storage.js) using [demo data](src/data/demoData.js) as the fallback. React state updates keep the views in sync, and effects write changed data to storage.
 
-### Run the app
+| Data | What it stores |
+| --- | --- |
+| Equipment | Inventory code, category, day rate, availability, and condition |
+| Bookings | Customer, assigned asset, rental dates, amount, and status |
+| Customers | Organization, contact details, reservation count, and lifetime value |
+| Workspace | The editable organization name |
+
+## Engineering decisions
+
+- **Keep the demo local.** Equipment, bookings, customers, and workspace name are stored separately under `gearflow:` keys. Missing or unparseable values fall back independently, and a failed write leaves the current in-memory session usable.
+- **Validate bookings before updating the workspace.** The app checks that the asset is available and that the return date follows the pickup date. It calculates the total from the day rate and rental length, adds the booking, and marks the asset as rented. Separate browser storage writes do not guarantee conflict-safe reservations across users.
+- **Scope build compatibility to the launcher.** The [launcher](scripts/react-scripts.js) supplies the legacy OpenSSL provider to the React Scripts start and build commands so the existing Webpack 4 toolchain can run on newer Node versions.
+
+## Getting started
+
+Use Node.js 18 or later and npm 9 or later. From the repository root:
 
 ```bash
-git clone https://github.com/jahidkhantuhin/gearflow-rental-operations.git
-cd gearflow-rental-operations
 npm install
 npm start
 ```
 
-The development server opens at [http://localhost:3000](http://localhost:3000). A production bundle is created in `build/`:
+Open `http://localhost:3000`. There is no account, backend, or application environment variable setup.
+
+### Static deployment
 
 ```bash
 npm run build
 ```
 
-> The repository currently uses Create React App 3 and React 16 to preserve its existing dependency set. A small cross-platform launcher enables the OpenSSL legacy provider for the old Webpack 4 toolchain on modern Node releases. Upgrade to a current build toolchain as a follow-up; the active demo is organized around reusable UI, sample data, and a storage adapter.
+Serve the `build/` directory on a static host. If you deploy under a path prefix, configure Create React App’s `homepage` for that location before building.
 
-## Demo guide
+## Guided demo
 
-1. Open **Equipment** and search for a lift or excavator. Try the category filters and toggle a machine into or out of maintenance.
-2. Choose **New booking**, select an available machine and customer, and set rental dates. The booking total is calculated from the day rate and rental length.
-3. Open **Bookings** to see the reservation and **Equipment** to see its updated availability.
-4. Add a customer or asset, then refresh the browser to confirm local persistence.
-5. Visit **Settings → Reset demo data** to restore the original portfolio scenario.
+1. Start in **Availability calendar** and inspect the schedule and upcoming pickups.
+2. Choose **New booking**. Select an available asset and a customer, then set the pickup and return dates.
+3. Open **Bookings** to see the reservation and **Equipment** to see the asset marked rented. Refresh to confirm both records persist.
 
-## Architecture
+Try **Settings → Edit profile** to change the sample organization name. **Reset demo data** restores the original workspace and sample records.
 
-```text
-src/
-├── App/
-│   ├── App.js          # Workspace shell, view composition, demo state, and workflows
-│   └── App.css         # Design system and responsive application styles
-├── components/         # Reusable controls and presentation components
-├── data/
-│   ├── demoData.js      # Portfolio seed records and relative demo dates
-│   └── storage.js       # Guarded, namespaced browser persistence
-├── pages/              # Original product management forms retained for reference
-├── index.css           # Global defaults and focus treatment
-└── index.js            # Application entry point
+## Quality baseline
+
+```bash
+npm test -- --watchAll=false --runInBand --no-cache
 ```
 
-The active demo keeps its state in React and persists records under the `gearflow:` local-storage namespace. Seed data is applied only when the browser has no saved workspace. Storage access is guarded so the application can recover from invalid or unavailable values by falling back to demo data.
+Both tests pass locally. They cover the seeded availability calendar and booking price, asset status, and persistence after reopening the app. React Scripts supplies ESLint configuration. Run tests and a production build together with `npm run check`. The [Quality checks workflow](.github/workflows/quality.yml) runs it on pushes and pull requests. The workflow and pre-push hook set `CI=true` so React Scripts treats compiler warnings as errors.
 
-### Data model
+### Pre-push hook
 
-- **Equipment:** inventory code, name, model, category, day rate, availability, and health.
-- **Booking:** booking reference, customer, assigned asset, rental period, total, and status.
-- **Customer:** organization, contact details, booking count, lifetime value, and relationship status.
-- **Workspace:** a configurable organization name, separate from the Gearflow product identity.
+After installing dependencies, enable the hook once per clone:
 
-### Production evolution
+```bash
+git config --local core.hooksPath .githooks
+```
 
-The current implementation is intentionally a self-contained showcase. A production deployment should add a typed API boundary, authentication and tenant isolation, database-backed inventory and reservations, server-side availability checks, audit history, role-based permissions, and automated integration tests. The UI is structured around those domain boundaries so a backend can replace local storage without changing the product concepts.
+Git blocks the push if the tests or production build fail.
 
-## Deployment
+## Known limitations and roadmap
 
-The production build is a static React bundle and can be hosted on Vercel, Netlify, GitHub Pages, or any static web server. For a project URL hosted below a path prefix, set the Create React App `homepage` value before building and configure the host to serve `index.html` for the app route.
+- Revenue, utilization, rental days, and on-time-return metrics are illustrative. The revenue period selector does not recalculate the chart. The Reports equipment table ranks by day rate.
+- The notification toggle is display-only. It does not persist a preference or send email.
+- **Mark fixed** updates inventory-backed assets. The extra Hydraulic breaker sample row is static and remains in the service queue.
+- Browser storage is local to this browser and has no schema validation for parseable values. The demo has no server-side auth, shared database, or cross-user reservation checks. Use sample data in the showcase.
+- Equipment thumbnails and web fonts load from external hosts.
 
-## Configuration
-
-The sample organization name (**Atlas Equipment**) is editable in **Settings → Workspace profile** and is stored per browser. Replace it with a workspace or client name for a presentation. Product branding is **Gearflow**; profile ownership is **Jahid Khan**.
-
-## Roadmap
-
-- [ ] Upgrade to a current React toolchain and TypeScript.
-- [ ] Extract feature modules for inventory, booking, customers, maintenance, and reporting.
-- [ ] Add an API-backed persistence adapter and relational schema.
-- [ ] Introduce role-aware authentication and organization-scoped access.
-- [ ] Add conflict-safe reservations, deposits, taxes, and cancellation policies.
-- [ ] Add automated unit, interaction, accessibility, and end-to-end coverage.
-- [ ] Add CI checks, preview deployments, and operational monitoring.
+The next steps are to modernize the build toolchain, extract feature modules, and add an authenticated API with organization-scoped data and conflict-safe reservations. Broader integration and accessibility coverage and CI would support those changes.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE). Copyright © 2026 Jahid Khan Tuhin.
+This project is licensed under the [MIT License](LICENSE).
 
----
+## Author
 
-<div align="center">Built by <strong>Jahid Khan</strong> · A portfolio project in rental operations software</div>
+**Jahid Khan Tuhin** · Full-stack JavaScript engineer
+
+[LinkedIn](https://www.linkedin.com/in/jahidkhantuhin/)

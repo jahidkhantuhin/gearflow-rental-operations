@@ -19,6 +19,7 @@
     "start": "node scripts/react-scripts.js start",
     "build": "node scripts/react-scripts.js build",
     "test": "react-scripts test",
+    "check": "npm test -- --watchAll=false --runInBand --no-cache && npm run build",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
